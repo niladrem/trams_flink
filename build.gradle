@@ -1,0 +1,27 @@
+plugins {
+    id 'java'
+}
+
+group 'pw.mini.bd'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven { url "http://packages.confluent.io/maven/" }
+}
+
+apply from: "$rootDir/gradle/dependencies.gradle"
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile "org.apache.flink:flink-java:${libVersions.flink}"
+    compile "org.json:json:${libVersions.json}"
+    compile "org.apache.flink:flink-streaming-java_2.11:${libVersions.flink}"
+    compile "org.apache.flink:flink-connector-base:${libVersions.flink}"
+    compile "org.apache.flink:flink-connector-kafka_2.11:${libVersions.flink}"
+    compile "org.apache.flink:flink-clients_2.11:${libVersions.flink}"
+    compileOnly("org.projectlombok:lombok:${libVersions.lombok}")
+    testCompileOnly("org.projectlombok:lombok:${libVersions.lombok}")
+}

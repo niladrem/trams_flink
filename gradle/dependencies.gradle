@@ -1,0 +1,7 @@
+ext {
+    libVersions = [
+            flink             : '1.14.0',
+            lombok            : '1.18.20',
+            json              : '20210307'
+    ]
+}
