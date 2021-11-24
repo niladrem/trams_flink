@@ -11,9 +11,11 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
+import org.apache.flink.util.OutputTag;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import pw.mini.function.DeduplicateProcessFunction;
 import pw.mini.function.StringToTramFunction;
@@ -42,14 +44,25 @@ public class DeduplicationJob {
 
         // Create Kafka Source and Sink
         val source = createKafkaSource();
-        val sink = createKafkaProducer();
 
-        env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka source")
+        val outputTag = new OutputTag<Tram>("zapierdala") {};
+
+        val deduplicatedStream = env
+            .fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka source")
             .map(new StringToTramFunction())
             .keyBy(new TramKeySelector())
-            .process(new DeduplicateProcessFunction())
+            .process(new DeduplicateProcessFunction(outputTag));
+
+        val fastStream = deduplicatedStream.getSideOutput(outputTag);
+
+        deduplicatedStream
             .map(new TramToStringFunction())
-            .addSink(sink);
+            .addSink(createKafkaProducer("output.topic"));
+
+        fastStream
+            .map(new TramToStringFunction())
+            .addSink(createKafkaProducer("fast.topic"));
+
 
         return env;
     }
@@ -78,9 +91,9 @@ public class DeduplicationJob {
             .build();
     }
 
-    private SinkFunction<String> createKafkaProducer() {
+    private SinkFunction<String> createKafkaProducer(String property) {
         val kafkaProperties = new Properties();
         kafkaProperties.put("bootstrap.servers", properties.getProperty("bootstrap.server"));
-        return new FlinkKafkaProducer<>(properties.getProperty("output.topic"), new SimpleStringSchema(), kafkaProperties);
+        return new FlinkKafkaProducer<>(properties.getProperty(property), new SimpleStringSchema(), kafkaProperties);
     }
 }
