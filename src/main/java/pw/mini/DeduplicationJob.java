@@ -45,15 +45,14 @@ public class DeduplicationJob {
         // Create Kafka Source and Sink
         val source = createKafkaSource();
 
-        val outputTag = new OutputTag<Tram>("zapierdala") {};
 
         val deduplicatedStream = env
             .fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka source")
             .map(new StringToTramFunction())
             .keyBy(new TramKeySelector())
-            .process(new DeduplicateProcessFunction(outputTag));
+            .process(new DeduplicateProcessFunction());
 
-        val fastStream = deduplicatedStream.getSideOutput(outputTag);
+        val fastStream = deduplicatedStream.getSideOutput(DeduplicateProcessFunction.ZAPIERDALA);
 
         deduplicatedStream
             .map(new TramToStringFunction())

@@ -18,15 +18,13 @@ import pw.mini.Tram;
 public class DeduplicateProcessFunction extends KeyedProcessFunction<Tuple2<String, String>, Tram, Tram> implements
     CheckpointedFunction {
 
+    public static final OutputTag<Tram> ZAPIERDALA = new OutputTag<Tram>("zapierdala") {};
+
     private transient ValueState<LocalDateTime> lastDateTimeState;
     private transient MapState<LocalDateTime, Tuple2<Double, Double>> allDatesState;
-    private transient OutputTag<Tram> zapierdala;
+
 
     private static Double earthR = 6371e3;
-
-    public DeduplicateProcessFunction(OutputTag<Tram> zapierdala) {
-        this.zapierdala = zapierdala;
-    }
 
     @Override
     public void snapshotState(FunctionSnapshotContext context) throws Exception {
@@ -54,7 +52,7 @@ public class DeduplicateProcessFunction extends KeyedProcessFunction<Tuple2<Stri
                 val timeDiff = currentTime.getSecond() - lastDate.getSecond();
                 val v = 3.600 * distanceInMeters / timeDiff;
                 if (v > 20.0) {
-                    ctx.output(zapierdala, value);
+                    ctx.output(ZAPIERDALA, value);
                 }
 
                 lastDateTimeState.update(currentTime);
