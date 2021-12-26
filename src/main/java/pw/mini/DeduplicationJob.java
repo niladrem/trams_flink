@@ -7,16 +7,13 @@ import java.util.Properties;
 import lombok.AllArgsConstructor;
 import lombok.val;
 import lombok.var;
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.connector.kafka.source.KafkaSource;
-import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 import org.apache.flink.util.OutputTag;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import pw.mini.function.DeduplicateProcessFunction;
 import pw.mini.function.StringToTramFunction;
 import pw.mini.function.TramKeySelector;
@@ -47,7 +44,7 @@ public class DeduplicationJob {
 
 
         val deduplicatedStream = env
-            .fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka source")
+            .addSource(source)
             .map(new StringToTramFunction())
             .keyBy(new TramKeySelector())
             .process(new DeduplicateProcessFunction());
@@ -80,14 +77,13 @@ public class DeduplicationJob {
         env.execute("DeduplicationJob");
     }
 
-    private KafkaSource<String> createKafkaSource() {
-        return KafkaSource.<String>builder()
-            .setBootstrapServers(properties.getProperty("bootstrap.server"))
-            .setTopics(properties.getProperty("input.topic"))
-            .setGroupId("deduplication-job")
-            .setStartingOffsets(OffsetsInitializer.committedOffsets(OffsetResetStrategy.EARLIEST))
-            .setValueOnlyDeserializer(new SimpleStringSchema())
-            .build();
+    private SourceFunction<String> createKafkaSource() {
+        val kafkaProperties = new Properties();
+        kafkaProperties.put("bootstrap.servers", properties.getProperty("bootstrap.server"));
+        kafkaProperties.put("group.id", "deduplication-job");
+        kafkaProperties.put("enable.auto.commit", "true");
+        kafkaProperties.put("auto.commit.interval.ms", "1000");
+        return new FlinkKafkaConsumer<>(properties.getProperty("input.topic"), new SimpleStringSchema(), kafkaProperties);
     }
 
     private SinkFunction<String> createKafkaProducer(String property) {
