@@ -14,11 +14,12 @@ import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
 import pw.mini.Tram;
+import pw.mini.TramEnriched;
 
 public class DeduplicateProcessFunction extends KeyedProcessFunction<Tuple2<String, String>, Tram, Tram> implements
     CheckpointedFunction {
 
-    public static final OutputTag<Tram> ZAPIERDALA = new OutputTag<Tram>("zapierdala") {};
+    public static final OutputTag<TramEnriched> ZAPIERDALA = new OutputTag<TramEnriched>("zapierdala") {};
 
     private transient ValueState<LocalDateTime> lastDateTimeState;
     private transient MapState<LocalDateTime, Tuple2<Double, Double>> allDatesState;
@@ -50,11 +51,16 @@ public class DeduplicateProcessFunction extends KeyedProcessFunction<Tuple2<Stri
                 val previousValue = allDatesState.get(lastDate);
                 val distanceInMeters = calculateDistance(previousValue.f0, previousValue.f1, value.getLat(), value.getLon());
                 val timeDiff = currentTime.getSecond() - lastDate.getSecond();
-                val v = 3.600 * distanceInMeters / timeDiff;
-                if (v > 20.0) {
-                    ctx.output(ZAPIERDALA, value);
+                val v = Math.abs(3.600 * distanceInMeters / timeDiff);
+
+                if (v > 50.0) {
+                    if (Double.isFinite(v)) {
+                        ctx.output(ZAPIERDALA, new TramEnriched(value, v));
+                    }
                 }
 
+                lastDateTimeState.update(currentTime);
+            } else if (lastDate == null) {
                 lastDateTimeState.update(currentTime);
             }
             allDatesState.put(currentTime, new Tuple2<>(value.getLat(), value.getLon()));

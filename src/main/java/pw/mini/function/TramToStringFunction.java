@@ -8,6 +8,10 @@ public class TramToStringFunction implements MapFunction<Tram, String> {
 
     @Override
     public String map(Tram value) throws Exception {
+        return mapTramToJSON(value).toString();
+    }
+
+    public static JSONObject mapTramToJSON(Tram value) {
         JSONObject obj = new JSONObject();
         obj.put("Lines", value.getLines());
         obj.put("Lon", value.getLon());
@@ -16,6 +20,6 @@ public class TramToStringFunction implements MapFunction<Tram, String> {
         obj.put("Lat", value.getLat());
         obj.put("Brigade", value.getBrigade());
 
-        return obj.toString();
+        return obj;
     }
 }

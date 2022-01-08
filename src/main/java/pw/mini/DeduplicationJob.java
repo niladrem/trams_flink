@@ -13,11 +13,7 @@ import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
-import org.apache.flink.util.OutputTag;
-import pw.mini.function.DeduplicateProcessFunction;
-import pw.mini.function.StringToTramFunction;
-import pw.mini.function.TramKeySelector;
-import pw.mini.function.TramToStringFunction;
+import pw.mini.function.*;
 
 @AllArgsConstructor
 public class DeduplicationJob {
@@ -56,7 +52,7 @@ public class DeduplicationJob {
             .addSink(createKafkaProducer("output.topic"));
 
         fastStream
-            .map(new TramToStringFunction())
+            .map(new TramEnrichedToStringFunction())
             .addSink(createKafkaProducer("fast.topic"));
 
 
